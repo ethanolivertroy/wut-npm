@@ -1,0 +1,38 @@
+{
+  "name": "wut-cli",
+  "version": "0.0.2",
+  "description": "A tiny, fast terminal assistant powered by Cerebras (installs the wut binary)",
+  "bin": {
+    "wut": "bin/wut.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "terminal",
+    "assistant",
+    "cerebras"
+  ],
+  "author": "Ethan Troy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethanolivertroy/wut-npm.git"
+  },
+  "homepage": "https://github.com/ethanolivertroy/wut"
+}
