@@ -23,14 +23,38 @@ jobs:
           package_version="$(node -p 'require("./package.json").version')"
           test "${GITHUB_REF_NAME}" = "v${package_version}"
 
+      # Node 22 still ships npm 10.x, which silently ignores OIDC and asks for a
+      # token instead. Trusted publishing needs npm >= 11.5.1 and Node >= 22.14.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install --global npm@latest
+          npm --version
 
       - run: npm test
 
+      # Until version one exists there is a token in NPM_TOKEN; npm cannot attach
+      # a trusted publisher to a package that does not exist yet. Once this
+      # repo's workflow is registered as the trusted publisher, delete the
+      # secret and this step authenticates over OIDC alone.
       - name: Publish to npm
-        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            # setup-node writes an empty _authToken line, and an empty credential
+            # still counts as "a token" to npm, so it never falls through to OIDC.
+            npm config delete //registry.npmjs.org/:_authToken >/dev/null 2>&1 || true
+            if [ -f "$HOME/.npmrc" ]; then
+              sed -i.bak '/_authToken/d' "$HOME/.npmrc"
+            fi
+            echo "no token present: publishing with OIDC trusted publishing"
+            npm publish --access public --provenance
+          else
+            echo "publishing with NPM_TOKEN"
+            npm publish --access public --provenance
+          fi
