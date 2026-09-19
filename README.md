@@ -20,6 +20,7 @@ write it to `~/.config/wut/credentials`.
 
 ```sh
 brew install ethanolivertroy/tap/wut
+cargo install wut
 curl -fsSL https://raw.githubusercontent.com/ethanolivertroy/wut/main/install.sh | sh
 ```
 
