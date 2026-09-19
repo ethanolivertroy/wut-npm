@@ -1,0 +1,61 @@
+name: Stage release
+
+# Staged publishing: CI uploads the tarball to npm's stage queue (no 2FA needed),
+# npm scans it, then a maintainer approves it with 2FA — either in the npm CLI
+# or on npmjs.com under "Staged Packages". Nothing goes public without that
+# approval. This requires the package to already exist on the registry.
+#
+# Needs npm >= 11.15.0, which Node 24 does not ship yet, hence the upgrade step.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure npm supports staged publishing
+        run: |
+          npm install --global npm@latest
+          npm --version
+
+      - run: npm test
+
+      - name: Check what would be staged
+        run: npm pack --dry-run
+
+      - name: Stage for review
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Prefer a token while one exists; fall back to the workflow's OIDC
+          # identity once the secret is deleted. setup-node leaves an empty
+          # _authToken line behind, and npm treats that as a credential, so it
+          # has to be removed for the OIDC exchange to happen.
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            npm config delete //registry.npmjs.org/:_authToken >/dev/null 2>&1 || true
+            if [ -f "$HOME/.npmrc" ]; then
+              sed -i.bak '/_authToken/d' "$HOME/.npmrc"
+            fi
+            echo "no token: staging with OIDC trusted publishing"
+          fi
+          npm stage publish
+
+      - name: Approve with 2FA to publish
+        run: |
+          echo "Staged versions waiting for review:"
+          npm stage list || true
+          echo
+          echo "Approve one with:  npm stage approve <id>"
+          echo "or on npmjs.com -> package -> Staged Packages -> Approve"
